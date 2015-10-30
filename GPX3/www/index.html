@@ -1,0 +1,116 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Travelingo Map Service & Map5.nl</title>
+    <script src="scripts/winstore-jscompat.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <meta charset="utf-8" />
+    <meta name="author" content="Just van den Broecke en Pim Verver">
+    <link href="css/index.css" rel="stylesheet" />
+    <link href="css/leaflet.css" rel="stylesheet" />
+
+    <script src="scripts/winstore-jscompat.js"></script>
+    <script src="scripts/jquery-1.11.3.min.js"></script>
+    <script src="scripts/leaflet.js"></script>
+    
+
+   
+    <style>
+        html, body {
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        var opensimpletopo = L.tileLayer(
+     'http://s.map5.nl/map/gast/tiles/opensimpletopo/EPSG900913/{z}/{x}/{y}.jpeg', {
+         // tms: true,
+         maxZoom: 18,
+         continuousWorld: true,
+         detectRetina: false,
+         opacity: 0.58,
+         attribution: 'CC by CA <a href="http://www.opensimpletopo.nl">OpenSimpleTopo</a> - <a href=http://openstreetmap.org>OpenStreetMap</a>.'
+     });
+        // Create the map
+        var map = L.map('map', {
+            center: new L.LatLng(52.312, 5.1),
+            zoom: 9,
+            layers: [opensimpletopo]
+        });
+
+        var baseLayers = {
+            "OpenSimpleTopo (NL)": opensimpletopo,
+        };
+
+        L.control.layers(baseLayers).addTo(map);
+
+        var wellmaxzoom = 5;
+        var geojsonLayerWells = new L.geoJson();
+
+        var geojsonMarkerOptions = {
+            radius: 5,
+            fillColor: "#ff7800",
+            color: "#000",
+            weight: 8,
+            opacity: .5,
+            fillOpacity: 0.8
+        };
+
+        function loadGeoJson(data) {
+            
+            geojsonLayerWells = L.geoJson(data, {
+                pointToLayer: function (feature, latlng) {
+                    return L.circleMarker(latlng, geojsonMarkerOptions);
+                }
+            });
+            geojsonLayerWells.addTo(map);
+        }
+                
+        // on is een eventhandler
+        map.on('moveend', function(){
+            if(map.getZoom() > wellmaxzoom){
+                var geoJsonUrl ='http://localhost:8080/geoserver/opengeo/ows'; 
+                var defaultParameters = {
+                    service: 'WFS',
+                    version: '1.0.0',
+                    request: 'getFeature',
+                    typeName: 'opengeo:GH_stationsmetrosTOP',
+                    maxFeatures: 11,
+                    outputFormat: 'application/json'
+                };
+
+                var customParams = {
+                    bbox: map.getBounds().toBBoxString(),
+                };
+                var parameters = L.Util.extend(defaultParameters, customParams);
+                console.log(geoJsonUrl + L.Util.getParamString(parameters));
+
+                $.ajax({
+                    url: geoJsonUrl + L.Util.getParamString(parameters),
+                    datatype: 'json',
+                    jsonCallback: 'getJson',
+                    success: loadGeoJson
+                });
+            } else {
+                map.removeLayer(geojsonLayerWells);
+            };
+        });
+
+         
+
+    </script>
+    <script src="cordova.js"></script>
+    <script src="scripts/platformOverrides.js"></script>
+    <script src="scripts/index.js"></script>
+</body>
+</html>
